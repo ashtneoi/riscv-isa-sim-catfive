@@ -228,7 +228,9 @@ class processor_t : public abstract_device_t
 public:
   processor_t(const isa_parser_t *isa, const char* varch,
               simif_t* sim, uint32_t id, bool halt_on_reset,
-              FILE *log_file, std::ostream& sout_); // because of command line option --log and -s we need both
+              FILE *log_file, std::ostream& sout_, // because of command line option --log and -s we need both
+              const std::unordered_map<reg_t, reg_t>* const_csr_values);
+
   ~processor_t();
 
   const isa_parser_t &get_isa() { return *isa; }

@@ -389,6 +389,27 @@ int main(int argc, char** argv)
                 [&](const char* s){log_commits = true;});
   parser.option(0, "log", 1,
                 [&](const char* s){log_path = s;});
+  parser.option(0, "constant-csr", 1, [&](const char* s){
+    const char* colon = strchr(s, ':');
+    if (colon == NULL) {
+      fprintf(stderr, "Invalid argument for --constant-csr (missing colon)\n");
+      exit(-1);
+    }
+    const std::string name(s, colon - s);
+    char* end;
+    const reg_t value = strtoull(colon + 1, &end, 0);
+    if (colon[1] == '\0' || *end != '\0') {
+      fprintf(stderr, "Invalid value in argument for --constant-csr\n");
+      exit(-1);
+    }
+    #define DECLARE_CSR(name2, number) if (#name2 == name) { cfg.const_csr_values[number] = value; } else
+    #include "encoding.h"
+    #undef DECLARE_CSR
+    { // else
+        fprintf(stderr, "Invalid CSR '%s' in argument for --constant-csr\n", name.c_str());
+        exit(-1);
+    }
+  });
   FILE *cmd_file = NULL;
   parser.option(0, "debug-cmd", 1, [&](const char* s){
      if ((cmd_file = fopen(s, "r"))==NULL) {
@@ -484,7 +505,7 @@ int main(int argc, char** argv)
   }
 
   sim_t s(&cfg, halted,
-      mems, plugin_devices, htif_args, dm_config, log_path, dtb_enabled, dtb_file,
+      mems, plugin_devices, cfg.const_csr_values, htif_args, dm_config, log_path, dtb_enabled, dtb_file,
 #ifdef HAVE_BOOST_ASIO
       io_service_ptr, acceptor_ptr,
 #endif

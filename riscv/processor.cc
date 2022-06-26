@@ -25,7 +25,8 @@
 
 processor_t::processor_t(const isa_parser_t *isa, const char* varch,
                          simif_t* sim, uint32_t id, bool halt_on_reset,
-                         FILE* log_file, std::ostream& sout_)
+                         FILE* log_file, std::ostream& sout_,
+                         const std::unordered_map<reg_t, reg_t>* const_csr_values)
   : debug(false), halt_request(HR_NONE), isa(isa), sim(sim), id(id), xlen(0),
   histogram_enabled(false), log_commits_enabled(false),
   log_file(log_file), sout_(sout_.rdbuf()), halt_on_reset(halt_on_reset),
@@ -60,6 +61,11 @@ processor_t::processor_t(const isa_parser_t *isa, const char* varch,
 
   set_impl(IMPL_MMU_ASID, true);
   set_impl(IMPL_MMU_VMID, true);
+
+  if (const_csr_values->count(CSR_MCONFIGPTR)) {
+    state.csrmap[CSR_MCONFIGPTR] = std::make_shared<const_csr_t>(
+        this, CSR_MCONFIGPTR, const_csr_values->at(CSR_MCONFIGPTR));
+  }
 
   reset();
 }

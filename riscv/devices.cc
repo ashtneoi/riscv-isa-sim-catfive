@@ -1,6 +1,12 @@
 #include "devices.h"
 #include "mmu.h"
 #include <stdexcept>
+#include <sys/mman.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <string.h>
 
 void bus_t::add_device(reg_t addr, abstract_device_t* dev)
 {
@@ -136,4 +142,102 @@ char* mem_t::contents(reg_t addr) {
     return res + pgoff;
   }
   return search->second + pgoff;
+}
+
+
+struct file_plugin_data {
+  int fd;
+  char* addr;
+  size_t length;
+  bool writable;
+};
+
+void* file_plugin_alloc(const char* args) {
+  const char* const colon = strchr(args, ':');
+
+  const char* filename;
+  bool writable = false;
+  if (colon == NULL) {
+    filename = args;
+  } else {
+    filename = colon + 1;
+    for (const char* flag = args; flag < colon; flag++) {
+      if (*flag == 'w') {
+        writable = true;
+      } else {
+        return NULL;
+      }
+    }
+  }
+
+  const int fd = open(filename, writable ? O_RDWR : O_RDONLY);
+  if (fd < 0) {
+    return NULL;
+  }
+
+  const off_t length = lseek(fd, 0, SEEK_END);
+  if (length == 0) {
+    (void) close(fd); // ignore error
+    return NULL;
+  }
+
+  char* const addr = (char*) mmap(NULL, length, writable ? PROT_READ|PROT_WRITE : PROT_READ|PROT_EXEC, MAP_SHARED, fd, 0);
+  if (addr == NULL) {
+    (void) close(fd); // ignore error
+    return NULL;
+  }
+
+  if (close(fd) != 0) {
+    return NULL;
+  }
+
+  struct file_plugin_data* const data = (struct file_plugin_data*) malloc(sizeof(struct file_plugin_data));
+  if (data == NULL) {
+    // jesus christ
+    (void) munmap(addr, length);
+    return NULL;
+  }
+  data->fd = fd;
+  data->addr = addr;
+  data->length = length;
+  data->writable = writable;
+  return data;
+}
+
+bool file_plugin_load(void* data, reg_t offset, size_t width, uint8_t* buffer) {
+  struct file_plugin_data* data2 = (struct file_plugin_data*) data;
+  if (offset >= data2->length) {
+    return false;
+  }
+  memmove(buffer, data2->addr + offset, width);
+  return true;
+}
+
+bool file_plugin_store(void* data, reg_t offset, size_t width, const uint8_t* buffer) {
+  struct file_plugin_data* data2 = (struct file_plugin_data*) data;
+  if (!data2->writable || offset >= data2->length) {
+    return false;
+  }
+  memmove(data2->addr + offset, buffer, width);
+  return true;
+}
+
+void file_plugin_dealloc(void* data) {
+  if (data != NULL) {
+    struct file_plugin_data* data2 = (struct file_plugin_data*) data;
+    (void) munmap(data2->addr, data2->length); // ignore error
+  }
+  free(data);
+}
+
+mmio_plugin_t file_plugin {
+  file_plugin_alloc,
+  file_plugin_load,
+  file_plugin_store,
+  file_plugin_dealloc
+};
+
+__attribute__((constructor))
+void init_file_plugin(void) {
+  register_mmio_plugin("file", &file_plugin);
 }

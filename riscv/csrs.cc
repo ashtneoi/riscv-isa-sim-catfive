@@ -1011,6 +1011,11 @@ bool const_csr_t::unlogged_write(const reg_t val) noexcept {
 }
 
 
+mconfigptr_csr_t::mconfigptr_csr_t(processor_t* const proc, const reg_t addr, reg_t val):
+  const_csr_t(proc, addr, val) {
+}
+
+
 counter_proxy_csr_t::counter_proxy_csr_t(processor_t* const proc, const reg_t addr, csr_t_p delegate):
   proxy_csr_t(proc, addr, delegate) {
 }

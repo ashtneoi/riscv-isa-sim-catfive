@@ -551,6 +551,14 @@ class const_csr_t: public csr_t {
 };
 
 
+class mconfigptr_csr_t: public const_csr_t {
+ public:
+  mconfigptr_csr_t(processor_t* const proc, const reg_t addr, reg_t val);
+};
+
+typedef std::shared_ptr<mconfigptr_csr_t> mconfigptr_csr_t_p;
+
+
 // For a CSR that is an unprivileged accessor of a privileged counter
 class counter_proxy_csr_t: public proxy_csr_t {
  public:

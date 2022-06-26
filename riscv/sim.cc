@@ -31,6 +31,7 @@ static void handle_signal(int sig)
 sim_t::sim_t(const cfg_t *cfg, bool halted,
              std::vector<std::pair<reg_t, mem_t*>> mems,
              std::vector<std::pair<reg_t, abstract_device_t*>> plugin_devices,
+             std::unordered_map<reg_t, reg_t> const_csr_values,
              const std::vector<std::string>& args,
              const debug_module_config_t &dm_config,
              const char *log_path,
@@ -78,7 +79,8 @@ sim_t::sim_t(const cfg_t *cfg, bool halted,
 
   for (size_t i = 0; i < cfg->nprocs(); i++) {
     procs[i] = new processor_t(&isa, cfg->varch(), this, cfg->hartids()[i], halted,
-                               log_file.get(), sout_);
+                               log_file.get(), sout_,
+                               &const_csr_values);
   }
 
   make_dtb();

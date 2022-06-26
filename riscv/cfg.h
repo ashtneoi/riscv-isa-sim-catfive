@@ -81,6 +81,7 @@ public:
   cfg_arg_t<std::vector<int>>        hartids;
   bool                               explicit_hartids;
   cfg_arg_t<bool>                    real_time_clint;
+  std::unordered_map<reg_t, reg_t>   const_csr_values;
 
   size_t nprocs() const { return hartids().size(); }
 };
