@@ -19,6 +19,8 @@
 #include <stdexcept>
 #include <string>
 #include <algorithm>
+#include <unordered_set>
+#include <inttypes.h>
 
 #undef STATE
 #define STATE state
@@ -62,9 +64,23 @@ processor_t::processor_t(const isa_parser_t *isa, const char* varch,
   set_impl(IMPL_MMU_ASID, true);
   set_impl(IMPL_MMU_VMID, true);
 
+  std::unordered_set<reg_t> const_csr_numbers;
+  for (auto &kv : *const_csr_values) {
+    const_csr_numbers.insert(kv.first);
+  }
+
   if (const_csr_values->count(CSR_MCONFIGPTR)) {
     state.csrmap[CSR_MCONFIGPTR] = std::make_shared<const_csr_t>(
         this, CSR_MCONFIGPTR, const_csr_values->at(CSR_MCONFIGPTR));
+    const_csr_numbers.erase(CSR_MCONFIGPTR);
+  }
+
+  if (!const_csr_numbers.empty()) {
+    for (const reg_t& num : const_csr_numbers) {
+      // TODO: Give a name, not a CSR number.
+      fprintf(stderr, "--constant-csr option for CSR 0x%" PRIX64 " was not used\n", num);
+    }
+    exit(-1);
   }
 
   reset();
