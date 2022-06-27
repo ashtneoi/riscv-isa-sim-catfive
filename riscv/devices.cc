@@ -181,7 +181,7 @@ void* file_plugin_alloc(const char* args) {
     return NULL;
   }
 
-  char* const addr = (char*) mmap(NULL, length, writable ? PROT_READ|PROT_WRITE : PROT_READ|PROT_EXEC, MAP_SHARED, fd, 0);
+  char* const addr = (char*) mmap(NULL, length, writable ? PROT_READ|PROT_WRITE : PROT_READ, MAP_SHARED, fd, 0);
   if (addr == NULL) {
     (void) close(fd); // ignore error
     return NULL;
